@@ -167,7 +167,7 @@ gogs      gogs-mysql.192.168.121.1.xip.io             gogs:3000                 
 We can now navigate to http://gogs-mysql.192.168.121.1.xip.io and configure for db: mysql:3306, username: gogs, password: (the previous one), database: default. Application URL: your route.
 
 <b>
-Please note: the current Gogs template is not shipped with any persistent volume configuration, so YOU'll need to configure a persistent storage for the configured DeploymentConfig once you'll deploy the app from template.
+Please note: the current Gogs template is not shipped with any persistent volume configuration, so YOU'll need to configure a persistent storage for the configured DeploymentConfig (for both mysql and gogs) once you'll deploy the app from template.
 </b>
 
 That's all!
