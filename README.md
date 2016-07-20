@@ -22,30 +22,23 @@ You have access to the following projects and can switch between them with 'oc p
 
   * default
   * glusterfs
-  * gogs
-  * gogs-mysql (current)
   * management-infra
   * openshift
   * openshift-infra
   * sample-project
 
-Using project "gogs-mysql".
+Using project "default".
 ```
 Then we can create a new project for holding all the resources we'll create:
 ```
-[alex@freddy ~]$ oc new-project gogs-standalone
-Now using project "gogs-standalone" on server "https://192.168.121.1:8443".
+[alex@freddy ~]$ oc new-project gogs
+Now using project "gogs" on server "https://192.168.121.1:8443".
 
 You can add applications to this project with the 'new-app' command. For example, try:
 
     $ oc new-app centos/ruby-22-centos7~https://github.com/openshift/ruby-hello-world.git
 
 to build a new hello-world application in Ruby.
-```
-And then we select it:
-```
-[alex@freddy ~]$ oc project gogs-standalone
-Now using project "gogs-standalone" on server "https://192.168.121.1:8443".
 ```
 
 We can now start creating all the needed resources, first of all we'll create a ServiceAccount for handling Gogs' container particular needs: 
