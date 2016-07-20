@@ -1,0 +1,190 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: gogs-mysql-template
+  annotations:
+    description: "Deploy a git server in minutes: gogs!"
+    tags: quickstart,instant-app,git,gogs,database
+objects:
+- apiVersion: v1
+  kind: Route
+  metadata:
+    labels:
+      app: gogs
+    name: gogs
+  spec:
+    host: "${APPLICATION_DOMAIN}"
+    port:
+      targetPort: 3000
+    to:
+      kind: Service
+      name: gogs
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: gogs
+    name: gogs
+  spec:
+    ports:
+    - name: 3000-tcp
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
+    selector:
+      app: gogs
+      deploymentconfig: gogs
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      template: gogs-mysql-template
+    name: mysql
+  spec:
+    ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+    selector:
+      deploymentconfig: mysql
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: gogs
+    name: gogs
+  spec:
+    replicas: 1
+    selector:
+      app: gogs
+      deploymentconfig: gogs
+    strategy:
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/container.gogs.image.entrypoint: '["docker/start.sh","/bin/s6-svscan","/app/gogs/docker/s6/"]'
+        labels:
+          app: gogs
+          deploymentconfig: gogs
+      spec:
+        containers:
+        - image: gogs/gogs
+          imagePullPolicy: IfNotPresent
+          name: gogs
+          ports:
+          - containerPort: 3000
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          volumeMounts:
+          - mountPath: /data
+            name: gogs-volume
+          securityContext:
+            privileged: true
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        serviceAccount: gogs
+        serviceAccountName: gogs
+        volumes:
+        - emptyDir: {}
+          name: gogs-volume
+    triggers:
+    - type: ConfigChange
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata: 
+    name: mysql
+    annotations: 
+      description: "Defines how to deploy the database"
+  spec: 
+    strategy: 
+      type: "Recreate"
+    triggers: 
+      - type: "ConfigChange"
+    replicas: 1
+    selector: 
+      name: "${DATABASE_SERVICE_NAME}"
+    template: 
+      metadata: 
+        name: "${DATABASE_SERVICE_NAME}"
+        labels: 
+          name: "${DATABASE_SERVICE_NAME}"
+      spec: 
+        volumes: 
+          - name: "data"
+            emptyDir: {}
+        containers: 
+          - name: mysql
+            image: mysql:5.6
+            ports: 
+              - containerPort: 3306
+            volumeMounts: 
+              - name: "data"
+                mountPath: "/var/lib/mysql/data"
+            readinessProbe: 
+              timeoutSeconds: 1
+              initialDelaySeconds: 5
+              exec: 
+                command: 
+                  - /bin/sh
+                  - -i
+                  - -c
+                  - MYSQL_PWD='${DATABASE_PASSWORD}' mysql -h 127.0.0.1 -u gogs -D default -e 'SELECT 1'
+            livenessProbe: 
+              timeoutSeconds: 1
+              initialDelaySeconds: 30
+              tcpSocket: 
+                port: 3306
+            env: 
+              - name: "MYSQL_USER"
+                value: "${DATABASE_USER}"
+              - name: "MYSQL_PASSWORD"
+                value: "${DATABASE_PASSWORD}"
+              - name: "MYSQL_DATABASE"
+                value: "${DATABASE_NAME}"
+              - name: "MYSQL_ROOT_PASSWORD"
+                value: "${DATABASE_PASSWORD}"
+            resources: 
+              limits: 
+                memory: "${MEMORY_MYSQL_LIMIT}"
+parameters: 
+  - name: "APPLICATION_DOMAIN"
+    displayName: "Application Hostname"
+    description: "The exposed hostname that will route to the Gogs service, if left blank a value will be defaulted."
+    value: "gogs"
+  - name: "DATABASE_NAME"
+    displayName: "Database Name"
+    required: true
+    value: "default"
+  - name: "DATABASE_USER"
+    displayName: "Database User"
+    required: true
+    value: "gogs"
+  - name: "DATABASE_PASSWORD"
+    displayName: "Database Password"
+    generate: "expression"
+    from: "[a-zA-Z0-9]{16}"
+  - name: "MEMORY_MYSQL_LIMIT"
+    displayName: "Memory Limit (MySQL)"
+    description: "Maximum amount of memory the MySQL container can use."
+    required: true
+    value: "512Mi"
+  - name: "DATABASE_SERVICE_NAME"
+    displayName: "Database Service Name"
+    required: true
+    value: "mysql"
