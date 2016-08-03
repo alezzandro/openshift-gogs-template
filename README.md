@@ -49,7 +49,7 @@ serviceaccount "gogs" created
 
 And then we give it all the needed rights:
 ```
-[alex@freddy gogs-template]$ oadm policy add-scc-to-user privileged system:serviceaccount:gogs-standalone:gogs
+[alex@freddy gogs-template]$ oadm policy add-scc-to-user privileged system:serviceaccount:gogs:gogs
 ```
 
 
